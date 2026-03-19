@@ -4,8 +4,17 @@
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+
+  /* Dark-indigo theme (defaults) */
+  --bg: #0b1226; /* deep indigo background */
+  --text-color: #e6eaf8; /* pale text */
+  --link-color: #95a8ff; /* muted indigo link */
+  --link-hover: #c6d4ff;
+  --nav-bg: rgba(6,10,28,0.80);
+  --nav-link-bg-hover: rgba(149,168,255,0.06);
+  --button-bg: #0f1726;
+  --button-text: var(--text-color);
+  --button-border: rgba(149,168,255,0.12);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,26 +22,79 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Light theme overrides */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fbf7ff; /* light lavender */
+    --text-color: #1f2340; /* muted dark text */
+    --link-color: #7a63c9; /* muted-indigo */
+    --link-hover: #5e4bb8;
+    --nav-bg: rgba(250,246,255,0.9);
+    --nav-link-bg-hover: rgba(122,99,201,0.06);
+    --button-bg: #ffffff;
+    --button-text: var(--text-color);
+    --button-border: rgba(122,99,201,0.12);
+  }
+}
+
+/* Global page styles */
+html, body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text-color);
+}
+
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--link-color);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--link-hover);
 }
 
-body {
-  margin: 0;
+/* top navigation bar */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  justify-content: center;
+  background: var(--nav-bg);
+  padding: 0.5rem 1rem;
+  backdrop-filter: blur(6px);
+}
+
+nav ul {
+  display: flex;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+
+nav a {
+  color: var(--link-color);
+  text-decoration: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+nav a:hover {
+  color: var(--link-hover);
+  background: var(--nav-link-bg-hover);
 }
 
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+  margin: 0.2em 0;
+  color: var(--text-color);
 }
 
 button {
@@ -42,27 +104,84 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--button-bg);
+  color: var(--button-text);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color 0.25s, background-color 0.2s;
+  border-color: var(--button-border);
 }
 button:hover {
-  border-color: #646cff;
+  border-color: var(--link-hover);
 }
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Small layout helpers used by App */
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
 }
+
+.card {
+  padding: 2em;
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+  padding: 1.6rem;
+  color: var(--text-color);
+  text-align: left;
+}
+
+.muted {
+  opacity: 0.78;
+  color: var(--text-color);
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.5rem;
+}
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.brand-logo { border-radius: 6px; box-shadow: 0 4px 18px rgba(4,6,20,0.4); }
+.brand-title { font-weight: 700; font-size: 1.05rem; color: var(--text-color); }
+.brand-sub { font-size: 0.85rem; color: rgba(255,255,255,0.7); opacity: 0.9; }
+
+.site-footer {
+  margin-top: 3rem;
+  padding: 1.2rem 0;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  text-align: center;
+}
+.footer-inner { opacity: 0.85; color: var(--text-color); }
+
+/* Form controls */
+input[type="text"], input[type="email"], input[type="password"], input[type="time"], textarea, select {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-color);
+  outline: none;
+}
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.45); }
+select { appearance: none; }
+
+/* Make layout a little sleeker for smaller forms */
+.small-controls { display:flex; gap:8px; align-items:center; }
+
+.btn-primary { background: linear-gradient(90deg, rgba(107,99,201,0.9), rgba(149,168,255,0.9)); color: white; border:none; }
+
+.center { text-align:center; }
