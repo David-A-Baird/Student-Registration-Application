@@ -1,8 +1,10 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+dotenv.config();
 // Make this an environment variable for production
-const uri = "mongodb+srv://David:FlightWolf@sr-application.otbn587.mongodb.net/"
+const uri = process.env.MONGO_URI.toString();
 const app = express();
 import cors from 'cors';
 
@@ -122,7 +124,7 @@ app.get('/SignUp', async (req, res) => {
         if (existing.email === String(email).toLowerCase()) return res.status(409).json({ error: 'Email already registered' });
       }
 
-      const passHash = await bcrypt.hash(password, 10);
+      const passHash = await bcrypt.hash(password, parseInt(process.env.SALT));
       const newStudent = new student({ username, firstName, lastName, email: String(email).toLowerCase(), address, phoneNumber, passHash });
       const savedStudent = await newStudent.save();
       res.status(201).json(savedStudent);
@@ -258,13 +260,13 @@ app.put('/admin/classes/:id/add-student', async (req, res) => {
     const { studentId } = req.body;
     if (!studentId) return res.status(400).json({ error: 'studentId required' });
     const cls = await Class.findById(id);
-    const stud = await student.findById(studentId);
-  if (!cls || !stud) return res.status(404).json({ error: 'class or student not found' });
+    const student = await student.findById(studentId);
+  if (!cls || !student) return res.status(404).json({ error: 'class or student not found' });
   // store username in class.students
-  if (!cls.students.map(String).includes(String(stud.username))) cls.students.push(stud.username);
-  if (!stud.classes.map(String).includes(String(cls._id))) stud.classes.push(cls._id);
+  if (!cls.students.map(String).includes(String(student.username))) cls.students.push(student.username);
+  if (!student.classes.map(String).includes(String(cls._id))) student.classes.push(cls._id);
   await cls.save();
-  await stud.save();
+  await student.save();
   const updated = await Class.findById(id);
   res.json({ class: await populateStudentsForClass(updated) });
   } catch (err) {
@@ -432,14 +434,15 @@ app.put('/students/:id', async (req, res) => {
 });
 
 // Delete student
+
 app.delete('/admin/students/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const stud = await student.findById(id);
     if (!stud) return res.status(404).json({ error: 'student not found' });
-  // remove student from any classes (students stored by username)
-  await Class.updateMany({ students: stud.username }, { $pull: { students: stud.username } });
-    await stud.remove();
+    // remove student from any classes (students stored by username)
+    await Class.updateMany({ students: stud.username }, { $pull: { students: stud.username } });
+    await student.deleteOne({ _id: stud._id });
     res.json({ success: true });
   } catch (err) {
     console.error('delete student error', err);
