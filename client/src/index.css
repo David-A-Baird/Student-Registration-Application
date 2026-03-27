@@ -16,6 +16,11 @@
   --button-text: var(--text-color);
   --button-border: rgba(149,168,255,0.12);
 
+  /* input field background and border for theme-aware styling */
+  --input-border: rgba(255,255,255,0.06);
+  --input-shadow: inset 0 1px 2px rgba(255,255,255,0.02);
+  --input-focus: 0 0 0 4px rgba(149,168,255,0.08);
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -34,6 +39,11 @@
     --button-bg: #ffffff;
     --button-text: var(--text-color);
     --button-border: rgba(122,99,201,0.12);
+    --input-bg: #f3f4f6; /* light-gray input background for visibility */
+    --input-border: rgba(31,35,64,0.08);
+    --placeholder-color: rgba(31,35,64,0.45);
+    --input-shadow: inset 0 2px 6px rgba(16,24,40,0.04);
+    --input-focus: 0 0 0 4px rgba(122,99,201,0.08);
   }
 }
 
@@ -171,12 +181,18 @@ button:focus-visible {
 input[type="text"], input[type="email"], input[type="password"], input[type="time"], textarea, select {
   padding: 0.6rem 0.8rem;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
   color: var(--text-color);
   outline: none;
+  box-shadow: var(--input-shadow);
 }
-input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.45); }
+input::placeholder, textarea::placeholder { color: var(--placeholder-color); }
+
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="time"]:focus, textarea:focus, select:focus {
+  box-shadow: var(--input-focus);
+  border-color: var(--link-color);
+}
 select { appearance: none; }
 
 /* Make layout a little sleeker for smaller forms */
@@ -185,3 +201,31 @@ select { appearance: none; }
 .btn-primary { background: linear-gradient(90deg, rgba(107,99,201,0.9), rgba(149,168,255,0.9)); color: white; border:none; }
 
 .center { text-align:center; }
+
+/* Theme overrides via data-theme attribute (takes precedence over prefers-color-scheme when set) */
+[data-theme="light"] {
+  --input-bg: #aaaaaa;
+  --bg: #fbf7ff;
+  --text-color: #1f2340;
+  --link-color: #7a63c9;
+  --link-hover: #5e4bb8;
+  --nav-bg: rgba(250,246,255,0.9);
+  --nav-link-bg-hover: rgba(122,99,201,0.06);
+  --button-bg: #ffffff;
+  --button-text: var(--text-color);
+  --button-border: rgba(122,99,201,0.12);
+}
+
+[data-theme="dark"] {
+  --input-bg: #000000;
+  --bg: #0b1226;
+  --placeholder-color: #ffffff;
+  --text-color: #e6eaf8;
+  --link-color: #95a8ff;
+  --link-hover: #c6d4ff;
+  --nav-bg: rgba(6,10,28,0.80);
+  --nav-link-bg-hover: rgba(149,168,255,0.06);
+  --button-bg: #0f1726;
+  --button-text: var(--text-color);
+  --button-border: rgba(149,168,255,0.12);
+}

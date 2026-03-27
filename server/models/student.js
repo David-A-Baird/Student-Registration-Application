@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const studentSchema = new mongoose.Schema({
 	username: { type: String, required: true, unique: true, trim: true },
@@ -17,4 +17,4 @@ const studentSchema = new mongoose.Schema({
 studentSchema.index({ username: 1 }, { unique: true });
 studentSchema.index({ email: 1 }, { unique: true });
 
-module.exports = mongoose.model('student', studentSchema);
+export default mongoose.model('student', studentSchema);

@@ -11,6 +11,9 @@ function Profile() {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState<any>({});
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -33,6 +36,40 @@ function Profile() {
   const handleLogout = () => {
     localStorage.removeItem('user');
     navigate('/login');
+  };
+
+  const startEditProfile = () => {
+    setProfileData({
+      username: user.username || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      address: user.address || '',
+      phoneNumber: user.phoneNumber || ''
+    });
+    setEditingProfile(true);
+  };
+
+  const saveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    setError(null);
+    try {
+      const payload: any = { ...profileData };
+      // if password is empty, don't send it
+      if (!payload.password) delete payload.password;
+      const res = await axios.put(`http://localhost:8080/students/${user._id}`, payload);
+      const updated = res.data.student;
+      // update localStorage and local state
+      localStorage.setItem('user', JSON.stringify(updated));
+      setUser(updated);
+      setEditingProfile(false);
+    } catch (err: any) {
+      console.error('save profile error', err);
+      setError(err?.response?.data?.error || 'Failed to save profile');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleSearch = async () => {
@@ -90,7 +127,32 @@ function Profile() {
   return (
     <div>
       <h2>Welcome, {user.username}!</h2>
-      <button onClick={handleLogout}>Log out</button>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={handleLogout}>Log out</button>
+        {!editingProfile ? (
+          <button onClick={startEditProfile}>Edit Profile</button>
+        ) : (
+          <>
+            <button onClick={saveProfile} disabled={savingProfile}>{savingProfile ? 'Saving...' : 'Save'}</button>
+            <button onClick={() => setEditingProfile(false)} disabled={savingProfile}>Cancel</button>
+          </>
+        )}
+      </div>
+
+      {editingProfile && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <h3>Edit your profile</h3>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <input value={profileData.username} onChange={(e) => setProfileData({ ...profileData, username: e.target.value })} placeholder="Username" />
+            <input value={profileData.firstName} onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })} placeholder="First name" />
+            <input value={profileData.lastName} onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })} placeholder="Last name" />
+            <input value={profileData.email} onChange={(e) => setProfileData({ ...profileData, email: e.target.value })} placeholder="Email" />
+            <input value={profileData.address} onChange={(e) => setProfileData({ ...profileData, address: e.target.value })} placeholder="Address" />
+            <input value={profileData.phoneNumber} onChange={(e) => setProfileData({ ...profileData, phoneNumber: e.target.value })} placeholder="Phone" />
+            <input type="password" value={profileData.password || ''} onChange={(e) => setProfileData({ ...profileData, password: e.target.value })} placeholder="New password (leave blank to keep)" />
+          </div>
+        </div>
+      )}
       <div style={{ marginTop: 16 }}>
         <label style={{ display: 'block', marginBottom: 8 }}>Search Classes:</label>
         <div className="small-controls">

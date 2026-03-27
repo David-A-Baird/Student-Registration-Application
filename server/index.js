@@ -1,19 +1,24 @@
-const express = require('express');
-const mongoose = require('mongoose')
-const bcrypt = require('bcrypt')
+import express from 'express';
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 // Make this an environment variable for production
 const uri = "mongodb+srv://David:FlightWolf@sr-application.otbn587.mongodb.net/"
 const app = express();
-const cors = require('cors');
+import cors from 'cors';
 
 app.use(cors())
 app.use(express.urlencoded({ extended: true })); 
 // accept JSON bodies for login and other API routes
 app.use(express.json());
 
-const student = require('./models/student');
-const Class = require('./models/class');
-const Administrator = require('./models/administrator');
+import student from './models/student.js';
+import Class from './models/class.js';
+import Administrator from './models/administrator.js';
+import logger from './logger.js';
+
+logger.info('Info Message');
+logger.error('Error Message');
+logger.warn('Warning Message');
 
 // helper to populate student documents for a class when Class.students stores usernames
 async function populateStudentsForClass(cls) {
@@ -30,6 +35,53 @@ async function populateStudentsForClass(cls) {
 
 async function populateStudentsForClasses(classes) {
   return await Promise.all((classes || []).map(populateStudentsForClass));
+}
+
+// Helpers to check schedule overlap and code conflicts for classes with the same name
+function parseTimeToMinutes(t) {
+  if (!t || typeof t !== 'string') return null;
+  const parts = t.split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function intervalsOverlap(startA, endA, startB, endB) {
+  if (startA == null || endA == null || startB == null || endB == null) return true; // treat unknown times as overlapping
+  return startA < endB && startB < endA;
+}
+
+function daysOverlap(daysA, daysB) {
+  if (!Array.isArray(daysA) || !Array.isArray(daysB) || daysA.length === 0 || daysB.length === 0) return true; // unknown days -> treat as overlapping
+  const setA = new Set(daysA.map(String));
+  return daysB.some((d) => setA.has(String(d)));
+}
+
+async function checkClassCreateConflicts({ name, code, startTime, endTime, days }, excludeId = null) {
+  // find existing classes with same name
+  const existing = await Class.find({ name });
+  const newCode = String(code || '').trim();
+  const newStart = parseTimeToMinutes(startTime);
+  const newEnd = parseTimeToMinutes(endTime);
+  for (const ex of existing) {
+    if (excludeId && String(ex._id) === String(excludeId)) continue;
+    const exCode = String(ex.code || '').trim();
+    // same code + same name is not allowed
+    if (exCode === newCode && newCode !== '') {
+      return { conflict: true, message: 'A class with the same name and code already exists' };
+    }
+    // if codes differ, ensure times/days do not overlap
+    if (exCode !== newCode) {
+      const exStart = parseTimeToMinutes(ex.startTime);
+      const exEnd = parseTimeToMinutes(ex.endTime);
+      if (daysOverlap(ex.days, days) && intervalsOverlap(exStart, exEnd, newStart, newEnd)) {
+        return { conflict: true, message: 'A class with the same name has an overlapping schedule' };
+      }
+    }
+  }
+  return { conflict: false };
 }
 
 mongoose.connect(uri);
@@ -184,12 +236,17 @@ app.post('/admin/classes', async (req, res) => {
   try {
     const { name, code, description, room, startTime, endTime, days } = req.body;
     if (!name) return res.status(400).json({ error: 'name required' });
+    // ensure new class doesn't conflict with existing classes of the same name
+    const conflict = await checkClassCreateConflicts({ name, code, startTime, endTime, days });
+    if (conflict.conflict) return res.status(409).json({ error: conflict.message });
+
     const newClass = new Class({ name, code, description, room, startTime, endTime, days });
     const saved = await newClass.save();
-    res.status(201).json({ class: saved });
+    const populated = await populateStudentsForClass(saved);
+    res.status(201).json({ class: populated });
   } catch (err) {
     console.error('create class error', err);
-    if (err && err.code === 11000) return res.status(409).json({ error: 'Class already exists' });
+    if (err && err.code === 11000) return res.status(409).json({ error: 'Duplicate key' });
     res.status(500).json({ error: 'failed to create class' });
   }
 });
@@ -293,10 +350,22 @@ app.put('/admin/classes/:id', async (req, res) => {
     if (updates.days && !Array.isArray(updates.days)) {
       return res.status(400).json({ error: 'days must be an array' });
     }
-  const updatedDoc = await Class.findByIdAndUpdate(id, updates, { new: true });
-  const updated = await populateStudentsForClass(updatedDoc);
-    if (!updated) return res.status(404).json({ error: 'class not found' });
-  res.json({ class: updated });
+    // Fetch existing class to compute full new state for conflict checking
+    const existing = await Class.findById(id);
+    if (!existing) return res.status(404).json({ error: 'class not found' });
+    const merged = {
+      name: updates.name !== undefined ? updates.name : existing.name,
+      code: updates.code !== undefined ? updates.code : existing.code,
+      startTime: updates.startTime !== undefined ? updates.startTime : existing.startTime,
+      endTime: updates.endTime !== undefined ? updates.endTime : existing.endTime,
+      days: updates.days !== undefined ? updates.days : existing.days
+    };
+    const conflict = await checkClassCreateConflicts(merged, id);
+    if (conflict.conflict) return res.status(409).json({ error: conflict.message });
+
+    const updatedDoc = await Class.findByIdAndUpdate(id, updates, { new: true });
+    const updated = await populateStudentsForClass(updatedDoc);
+    res.json({ class: updated });
   } catch (err) {
     console.error('edit class error', err);
     if (err && err.code === 11000) return res.status(409).json({ error: 'Duplicate class name' });
@@ -337,6 +406,27 @@ app.put('/admin/students/:id', async (req, res) => {
     res.json({ student: updated });
   } catch (err) {
     console.error('edit student error', err);
+    res.status(500).json({ error: 'failed to update student' });
+  }
+});
+
+// Student self-edit endpoint (allows a student to update their own profile)
+app.put('/students/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = { ...req.body };
+    // don't allow passHash direct write; accept a 'password' field to re-hash
+    if (updates.password) {
+      updates.passHash = await bcrypt.hash(updates.password, 10);
+      delete updates.password;
+    }
+    // normalize email
+    if (updates.email) updates.email = String(updates.email).toLowerCase();
+    const updated = await student.findByIdAndUpdate(id, updates, { new: true }).select('-passHash');
+    if (!updated) return res.status(404).json({ error: 'student not found' });
+    res.json({ student: updated });
+  } catch (err) {
+    console.error('student self-edit error', err);
     res.status(500).json({ error: 'failed to update student' });
   }
 });

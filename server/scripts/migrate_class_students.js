@@ -2,9 +2,9 @@
 // This will convert Class.students entries from ObjectId to the corresponding student.username
 // Run once and verify your DB before and after.
 
-const mongoose = require('mongoose');
-const Student = require('../models/student');
-const Class = require('../models/class');
+import mongoose from 'mongoose';
+import Student from '../models/student.js';
+import Class from '../models/class.js';
 
 // Replace with your DB URI or export MONGODB_URI env var
 const uri = process.env.MONGODB_URI || "mongodb+srv://David:FlightWolf@sr-application.otbn587.mongodb.net/";

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const classSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, unique: true },
@@ -14,7 +14,10 @@ const classSchema = new mongoose.Schema({
   students: [{ type: String, trim: true }]
 });
 
-classSchema.index({ name: 1 }, { unique: true });
-classSchema.index({ code: 1 });
+// allow duplicate class names in DB; we'll enforce schedule/code constraints at the application level
+classSchema.index({ code: 1 }, { unique: true });
+classSchema.index({ name: 1 }, { unique: false });
+classSchema.index({ description: 1 }, { unique: false });
+classSchema.index({ room: 1 }, { unique: false });
 
-module.exports = mongoose.model('Class', classSchema);
+export default mongoose.model('Class', classSchema);
